@@ -305,7 +305,9 @@ async fn run_acp_tui_mode(
     // Steady block (DECSCUSR Ps=2): solid filled rectangle, no blink.
     // Survives the alt-screen swap; restored on exit below.
     execute!(stdout, SetCursorStyle::SteadyBlock)?;
-    let backend = CrosstermBackend::new(stdout);
+    // Send ordinary frame updates together instead of letting individual
+    // terminal writes expose partially painted content.
+    let backend = CrosstermBackend::new(io::BufWriter::with_capacity(64 * 1024, stdout));
     let mut terminal = Terminal::new(backend)?;
 
     let result = run_acp_app(
@@ -381,7 +383,7 @@ fn spawn_agent_lifecycle_forwarder(
 }
 
 async fn run_acp_app(
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    terminal: &mut Terminal<CrosstermBackend<io::BufWriter<io::Stdout>>>,
     config: HelperConfig,
     shell_mgr: Arc<ShellManager>,
     wt_connected: bool,

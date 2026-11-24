@@ -1,6 +1,8 @@
 use crate::win32::ClipboardPaste;
 use anyhow::Result;
+use crossterm::cursor::MoveTo;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::queue;
 use ratatui::backend::CrosstermBackend;
 use ratatui::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -5574,12 +5576,13 @@ impl App {
 
     pub async fn run(
         &mut self,
-        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+        terminal: &mut Terminal<CrosstermBackend<impl io::Write>>,
         mut ui_rx: mpsc::UnboundedReceiver<AppEvent>,
         mut event_rx: mpsc::UnboundedReceiver<AppEvent>,
     ) -> Result<()> {
         const MAX_EVENTS_PER_FRAME: usize = 64;
 
+        terminal.hide_cursor()?;
         let initial_draw_started = std::time::Instant::now();
         self.draw_frame(terminal)?;
         ui_trace::log_slow("initial_draw", initial_draw_started.elapsed(), || {
@@ -5676,7 +5679,7 @@ impl App {
 
     fn apply_resize_if_needed(
         &self,
-        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+        terminal: &mut Terminal<CrosstermBackend<impl io::Write>>,
         event: &AppEvent,
     ) -> Result<()> {
         let AppEvent::Resize(width, height) = event else {
@@ -5722,14 +5725,17 @@ impl App {
         }
     }
 
-    fn draw_frame(&mut self, terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
+    fn draw_frame(
+        &mut self,
+        terminal: &mut Terminal<CrosstermBackend<impl io::Write>>,
+    ) -> Result<()> {
         let total_started = std::time::Instant::now();
 
         self.log_permission_snapshot();
         let mut frame = terminal.get_frame();
 
         let render_started = std::time::Instant::now();
-        ui::render(&mut frame, self);
+        let input_caret = ui::render(&mut frame, self);
         self.text_selection.snapshot_and_render(frame.buffer_mut());
         let action_overlay = crate::action_links::build_overlay(
             frame.buffer_mut(),
@@ -5738,15 +5744,7 @@ impl App {
         );
         ui_trace::log_slow("ui_render", render_started.elapsed(), || self.trace_state());
 
-        // The text caret is painted as an inverse buffer cell by `ui::input`
-        // in every state, so the OS cursor is always hidden. With no
-        // `show_cursor`/`set_cursor_position` interleaved after the content
-        // flush, there's no partial-frame tearing to hide — hence no need for
-        // a synchronized-update (CSI ? 2026) wrapper around the frame (which
-        // was also the prime suspect for frames being held until the next
-        // redraw on an unfocused pane).
         let flush_started = std::time::Instant::now();
-        terminal.hide_cursor()?;
         terminal.flush()?;
         ui_trace::log_slow("terminal_flush", flush_started.elapsed(), || {
             self.trace_state()
@@ -5758,6 +5756,12 @@ impl App {
         self.painted_completed_turn_action_links
             .clone_from(&self.completed_turn_action_links);
 
+        // Windows anchors IME composition to the terminal cursor. Keep it hidden,
+        // but move it to the painted caret after all drawing has moved it around.
+        // Queue the move so it shares the frame's final write.
+        if let Some(Position { x, y }) = input_caret {
+            queue!(terminal.backend_mut(), MoveTo(x, y))?;
+        }
         let backend_flush_started = std::time::Instant::now();
         terminal.backend_mut().flush()?;
         ui_trace::log_slow(

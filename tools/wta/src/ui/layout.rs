@@ -7,13 +7,14 @@ use super::{
     model_popup, pending_queue, permission, recommendations, setup, user_input,
 };
 
-pub fn render(frame: &mut Frame, app: &mut App) {
+pub fn render(frame: &mut Frame, app: &mut App) -> Option<Position> {
     app.begin_agent_markdown_frame();
-    render_content(frame, app);
+    let input_caret = render_content(frame, app);
     app.end_agent_markdown_frame();
+    input_caret
 }
 
-fn render_content(frame: &mut Frame, app: &mut App) {
+fn render_content(frame: &mut Frame, app: &mut App) -> Option<Position> {
     let area = frame.area();
     app.completed_turn_hits.clear();
     app.completed_turn_action_links.clear();
@@ -32,8 +33,7 @@ fn render_content(frame: &mut Frame, app: &mut App) {
             .constraints([Constraint::Min(1), Constraint::Length(input_height)])
             .split(area);
         auth::render(frame, app, chunks[0]);
-        input::render(frame, app, chunks[1]);
-        return;
+        return input::render(frame, app, chunks[1]);
     }
 
     // Setup mode: diagnostic install/sign-in/retry flow with input box.
@@ -47,11 +47,11 @@ fn render_content(frame: &mut Frame, app: &mut App) {
             .constraints([Constraint::Min(1), Constraint::Length(input_height)])
             .split(area);
         setup::render(frame, app, chunks[0]);
-        input::render(frame, app, chunks[1]);
+        let input_caret = input::render(frame, app, chunks[1]);
         if let Some(agent_state) = app.agent_popup_state() {
             agent_popup::render_popup(frame, agent_state, chunks[1]);
         }
-        return;
+        return input_caret;
     }
 
     // agent session view takes over the full pane area; chat / input / debug
@@ -96,7 +96,7 @@ fn render_content(frame: &mut Frame, app: &mut App) {
             tab.agents_view.search_focused,
             pane_focused,
         );
-        return;
+        return None;
     }
 
     let (main_area, debug_area) = if app.show_debug_panel {
@@ -276,7 +276,7 @@ fn render_content(frame: &mut Frame, app: &mut App) {
     pending_queue::render(frame, queued_count, chunks[7].inner(Margin::new(1, 0)));
     let input_area = chunks[8];
     app.input_dialog_area = Some(input_area);
-    input::render(frame, app, input_area);
+    let input_caret = input::render(frame, app, input_area);
 
     if let Some(debug_area) = debug_area {
         debug_panel::render(frame, app, debug_area);
@@ -334,6 +334,7 @@ fn render_content(frame: &mut Frame, app: &mut App) {
     {
         app.recommendation_rendered = false;
     }
+    input_caret
 }
 
 /// Truncate `s` so its rendered (display-cell) width fits in `max` columns,

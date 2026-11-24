@@ -38,7 +38,7 @@ struct WrappedInput {
     cursor_col: usize,
 }
 
-pub fn render(frame: &mut Frame, app: &App, area: Rect) {
+pub fn render(frame: &mut Frame, app: &App, area: Rect) -> Option<Position> {
     let tab = app.current_tab();
     let border_style = if app.pane_focused {
         theme::INPUT_BORDER_FOCUSED
@@ -66,7 +66,7 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     // has XAML focus *and* the TUI's arrow keys land in the input (not in a
     // recommendation card or a selected completed turn). See
     // TabSession::input_has_nav_focus.
-    let input_active = app.pane_focused && tab.input_has_nav_focus();
+    let input_active = app.pane_focused && tab.input_has_nav_focus() && !app.help_overlay_visible;
 
     let lines: Vec<Line> = if tab.input.is_empty() {
         // Show a placeholder reflecting connection state. The "> " is its
@@ -170,6 +170,16 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
 
     let paragraph = Paragraph::new(lines).block(block);
     frame.render_widget(paragraph, area);
+
+    let text_start = 1 + INPUT_LEFT_PAD + INPUT_PROMPT_WIDTH;
+    if !input_active || tab.input_all_selected || area.height <= 2 || area.width <= text_start + 1 {
+        return None;
+    }
+    let column = viewport.cursor_col.min(usize::from(text_width - 1)) as u16;
+    Some(Position::new(
+        area.x + text_start + column,
+        area.y + 1 + viewport.cursor_row as u16,
+    ))
 }
 
 pub(crate) fn input_height(input: &str, cursor_pos: usize, total_width: u16) -> u16 {

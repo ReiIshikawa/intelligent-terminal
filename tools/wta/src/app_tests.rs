@@ -13861,6 +13861,33 @@ fn render_agent_input_accepts_non_ascii() {
 }
 
 #[test]
+fn agent_input_reports_the_painted_caret_cell() {
+    use ratatui::{backend::TestBackend, Terminal};
+
+    let mut app = test_app();
+    app.state = ConnectionState::Connected;
+    app.pane_focused = true;
+    let mut terminal = Terminal::new(TestBackend::new(20, 12)).unwrap();
+
+    for (draft, column, row) in [("abc", 7, 1), ("123456789012345日", 6, 2)] {
+        let tab = app.current_tab_mut();
+        tab.input = draft.into();
+        tab.cursor_pos = draft.len();
+
+        let mut frame = terminal.get_frame();
+        let caret = crate::ui::render(&mut frame, &mut app).unwrap();
+        let area = app.input_dialog_area.unwrap();
+        assert_eq!(caret, Position::new(area.x + column, area.y + row));
+        assert!(frame.buffer_mut()[caret]
+            .modifier
+            .contains(Modifier::REVERSED));
+    }
+
+    app.pane_focused = false;
+    assert_eq!(crate::ui::render(&mut terminal.get_frame(), &mut app), None);
+}
+
+#[test]
 fn unhandled_modified_characters_do_not_leak_into_agent_input() {
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
