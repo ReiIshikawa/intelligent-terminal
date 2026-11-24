@@ -424,6 +424,7 @@ mod tests {
                 distro: distro.clone(),
             },
             crate::protocol::acp::spawn::SharedProviderSelection::Disabled,
+            None,
         )
         .unwrap();
         let _incoming = spawned.child.take_stdout().await.unwrap();
@@ -508,6 +509,7 @@ mod tests {
                     distro: distro.clone(),
                 },
                 crate::protocol::acp::spawn::SharedProviderSelection::Disabled,
+                None,
             )
             .unwrap();
             let mut incoming = spawned.child.take_stdout().await.unwrap();

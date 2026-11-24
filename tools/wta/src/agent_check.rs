@@ -602,6 +602,7 @@ pub fn save_copilot_enterprise_host(host: &str) {
 pub enum AgentInstallOutcome {
     Installed,
     AlreadyAvailable,
+    AcpPrepared,
     Failed(String),
     TimedOut,
     DetectionTimedOut,
@@ -626,7 +627,7 @@ pub async fn install_in_source(
             let command =
                 agent_registry::build_acp_command_for_source(provider.family_id(), None, source);
             match provider.prepare(&command, source).await {
-                Ok(_) => AgentInstallOutcome::Installed,
+                Ok(_) => AgentInstallOutcome::AcpPrepared,
                 Err(error) => AgentInstallOutcome::Failed(
                     t!(
                         "agent.install.acp_failed",

@@ -324,6 +324,20 @@ Gemini speaks ACP natively, so no wrapper is required.
 
 ### Google Antigravity ACP (Windows and WSL)
 
+On Windows, set `WTA_ANTIGRAVITY_PROCESS_PER_SESSION=1` in the environment
+that launches Intelligent Terminal to opt in to the installed Antigravity
+CLI's `agy acp --process-per-session` backend. Start a fresh Intelligent
+Terminal process so the ACP master inherits the setting. When a session
+closes, the CLI can release its worker without stopping another session.
+Each simultaneously open session has its own worker. The CLI uses its own
+cached login and conversation storage, so standalone ACP history may not
+appear in this mode. Remove the setting and restart to return to the
+standalone backend.
+
+Intelligent Terminal uses the standalone backend if the installed CLI
+does not support the option. WSL and explicit ACP commands retain their
+configured launch paths.
+
 Antigravity's ACP server is distributed separately from the interactive `agy` CLI.
 With `agy` installed, Intelligent Terminal automatically downloads and prepares
 a supported, pinned ACP archive when the server is needed. This includes agent

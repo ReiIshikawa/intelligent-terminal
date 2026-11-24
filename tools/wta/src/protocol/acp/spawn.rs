@@ -307,6 +307,7 @@ pub(crate) fn spawn_agent_process_with_provider(
     agent_id: Option<&str>,
     environment_policy: ChildEnvironmentPolicy,
     provider_selection: SharedProviderSelection<'_>,
+    prepared_command: Option<&crate::agent_lifecycle::providers::PreparedHostCommand>,
 ) -> Result<AgentSpawn> {
     spawn_host_agent_process(
         agent_cmd,
@@ -314,6 +315,7 @@ pub(crate) fn spawn_agent_process_with_provider(
         agent_id,
         environment_policy,
         provider_selection,
+        prepared_command,
     )
 }
 
@@ -323,6 +325,7 @@ fn spawn_host_agent_process(
     agent_id: Option<&str>,
     environment_policy: ChildEnvironmentPolicy,
     provider_selection: SharedProviderSelection<'_>,
+    prepared_command: Option<&crate::agent_lifecycle::providers::PreparedHostCommand>,
 ) -> Result<AgentSpawn> {
     let parts: Vec<&str> = agent_cmd.split_whitespace().collect();
     let raw_program = parts
@@ -335,12 +338,18 @@ fn spawn_host_agent_process(
         .or_else(|| std::env::var_os("PATH"));
     let resolution_cwd =
         std::env::current_dir().context("failed to capture agent resolution directory")?;
-    let (mut cmd, resolved_program) = host_agent_command(
-        raw_program,
-        resolve_spawn_profile(agent_cmd, agent_id),
-        base_path.as_deref().unwrap_or_default(),
-        &resolution_cwd,
-    )?;
+    let (mut cmd, resolved_program) = if let Some(prepared) = prepared_command {
+        let mut cmd = tokio::process::Command::new(&prepared.program);
+        cmd.args(prepared.args);
+        (cmd, prepared.program.clone())
+    } else {
+        host_agent_command(
+            raw_program,
+            resolve_spawn_profile(agent_cmd, agent_id),
+            base_path.as_deref().unwrap_or_default(),
+            &resolution_cwd,
+        )?
+    };
 
     let is_npx = resolved_program.eq_ignore_ascii_case("npx")
         || resolved_program.eq_ignore_ascii_case("npx.cmd")
@@ -610,6 +619,7 @@ pub(crate) fn spawn_agent_process_for_source_with_provider(
     source: &crate::agent_source::AgentSource,
     environment_policy: ChildEnvironmentPolicy,
     provider_selection: SharedProviderSelection<'_>,
+    prepared_command: Option<&crate::agent_lifecycle::providers::PreparedHostCommand>,
 ) -> Result<AgentSpawn> {
     match source {
         crate::agent_source::AgentSource::Host => spawn_agent_process_with_provider(
@@ -618,6 +628,7 @@ pub(crate) fn spawn_agent_process_for_source_with_provider(
             agent_id,
             environment_policy,
             provider_selection,
+            prepared_command,
         ),
         crate::agent_source::AgentSource::Wsl { distro } => {
             spawn_wsl_agent_process(agent_cmd, distro, agent_id, environment_policy)
@@ -630,6 +641,7 @@ pub(crate) fn spawn_history_agent_process(
     agent_id: &str,
     source: &crate::agent_source::AgentSource,
     provider_selection: SharedProviderSelection<'_>,
+    prepared_command: Option<&crate::agent_lifecycle::providers::PreparedHostCommand>,
 ) -> Result<AgentSpawn> {
     spawn_agent_process_for_source_with_provider(
         agent_cmd,
@@ -638,6 +650,7 @@ pub(crate) fn spawn_history_agent_process(
         source,
         ChildEnvironmentPolicy::ApplySharedProvider,
         provider_selection,
+        prepared_command,
     )
 }
 
@@ -968,6 +981,7 @@ mod tests {
             Some("custom:startup-cleanup-regression"),
             ChildEnvironmentPolicy::CleanCloudDiscovery,
             SharedProviderSelection::Inherit,
+            None,
         )
         .expect("spawn the real ACP launcher fixture");
 

@@ -6404,6 +6404,7 @@ async fn spawn_one_agent(
         source,
         ChildEnvironmentPolicy::ApplySharedProvider,
         provider_binding.spawn_selection(),
+        prepared.host_command.as_ref(),
     ) {
         Ok(result) => result,
         Err(error) => {
@@ -6701,6 +6702,7 @@ async fn spawn_one_agent(
             agent_id: resolved_agent_id.clone(),
             source: source.clone(),
             provider: provider_binding.clone(),
+            host_command: prepared.host_command,
         })
         .map_err(|_| anyhow!("history target already configured"))?;
     state.agent_authentication.lock().await.insert(

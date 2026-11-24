@@ -15953,6 +15953,7 @@ async fn dedicated_history_startup_does_not_consume_the_chat_budget() {
         agent_id: "custom:history-failure".to_string(),
         source: crate::agent_source::AgentSource::Host,
         provider: ProviderBinding::Native,
+        host_command: None,
     };
     let key = agent_cmd_key_with_provider(
         &target.command,
@@ -17729,6 +17730,7 @@ while ($null -ne ($line=[Console]::In.ReadLine())) {{
                     agent_id: "custom:history-fixture".into(),
                     source: crate::agent_source::AgentSource::Host,
                     provider: ProviderBinding::Native,
+                    host_command: None,
                 })
                 .ok()
                 .unwrap();
@@ -17868,6 +17870,7 @@ while ($null -ne ($line=[Console]::In.ReadLine())) {{
                     agent_id: "custom:history-fixture".into(),
                     source: crate::agent_source::AgentSource::Host,
                     provider: ProviderBinding::Native,
+                    host_command: None,
                 })
                 .ok()
                 .unwrap();
@@ -17989,6 +17992,7 @@ async fn history_retry_reopens_retained_gate_after_chat_retirement_without_bypas
                     agent_id: "custom:retained-history".into(),
                     source: crate::agent_source::AgentSource::Host,
                     provider: ProviderBinding::Native,
+                    host_command: None,
                 };
                 let cancelled = tokio_util::sync::CancellationToken::new();
                 {
@@ -18102,6 +18106,7 @@ async fn history_retry_wakes_paused_worker_without_waiting_for_other_agents() {
                     agent_id: "custom:paused-history".into(),
                     source: crate::agent_source::AgentSource::Host,
                     provider: ProviderBinding::Native,
+                    host_command: None,
                 };
                 let cancelled = tokio_util::sync::CancellationToken::new();
                 for _ in 0..3 {
@@ -18345,6 +18350,7 @@ async fn history_refresh_live_copilot_readonly_connection_can_be_recycled() {
                     agent_id: "copilot".into(),
                     source: crate::agent_source::AgentSource::Host,
                     provider: ProviderBinding::Native,
+                    host_command: None,
                 })
                 .ok()
                 .unwrap();

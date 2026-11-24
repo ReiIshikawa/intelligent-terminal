@@ -16102,6 +16102,28 @@ fn antigravity_install_completion_cannot_cross_execution_sources() {
 }
 
 #[test]
+fn prepared_host_acp_reconnects_without_standalone_detection() {
+    let mut app = test_app();
+    app.state = ConnectionState::Disconnected;
+    app.current_agent_id = "antigravity".into();
+    app.pending_agent_install = Some(PendingAgentInstall {
+        request_id: 1,
+        agent_id: "antigravity".into(),
+        binding_generation: app.agent_binding_generation,
+        agent_source: crate::agent_source::AgentSource::Host,
+    });
+
+    app.handle_event(AppEvent::AgentInstallComplete {
+        request_id: 1,
+        agent_id: "antigravity".into(),
+        outcome: crate::agent_check::AgentInstallOutcome::AcpPrepared,
+    });
+
+    assert!(app.pending_agent_install.is_none());
+    assert!(matches!(app.state, ConnectionState::Connecting(_)));
+}
+
+#[test]
 fn antigravity_wsl_install_completion_preserves_an_already_connected_transport() {
     for was_connected in [true, false] {
         let mut app = test_app();

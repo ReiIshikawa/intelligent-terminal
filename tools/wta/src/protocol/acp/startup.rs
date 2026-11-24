@@ -53,7 +53,7 @@ pub(crate) async fn start_probe_with_provider(
     let preparation = providers::prepare(command, agent_id, source)
         .await
         .context(StartupPhase::Preparation)?;
-    startup.prepared(preparation);
+    startup.prepared(&preparation);
     let mut spawned = super::spawn::spawn_agent_process_for_source_with_provider(
         command,
         None,
@@ -61,6 +61,7 @@ pub(crate) async fn start_probe_with_provider(
         source,
         environment,
         provider,
+        preparation.host_command.as_ref(),
     )
     .context(StartupPhase::Spawn)?;
     tracing::info!(

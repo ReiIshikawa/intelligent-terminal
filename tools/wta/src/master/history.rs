@@ -19,6 +19,9 @@ pub(super) struct HistoryTarget {
     pub agent_id: String,
     pub source: crate::agent_source::AgentSource,
     pub provider: ProviderBinding,
+    // Antigravity's native and standalone ACP backends can see different
+    // conversations. Reuse the owning agent's launch choice for history.
+    pub host_command: Option<crate::agent_lifecycle::providers::PreparedHostCommand>,
 }
 
 async fn await_history_startup(
@@ -563,6 +566,7 @@ mod tests {
             agent_id: "custom:history-ownership".into(),
             source: crate::agent_source::AgentSource::Host,
             provider: ProviderBinding::Native,
+            host_command: None,
         }
     }
 
@@ -770,18 +774,21 @@ pub(super) struct HistoryProcess {
 
 impl HistoryProcess {
     async fn spawn(target: &HistoryTarget) -> Result<Self> {
-        crate::agent_lifecycle::providers::prepare(
-            &target.command,
-            Some(&target.agent_id),
-            &target.source,
-        )
-        .await
-        .context(crate::agent_lifecycle::StartupPhase::Preparation)?;
+        if target.host_command.is_none() {
+            crate::agent_lifecycle::providers::prepare(
+                &target.command,
+                Some(&target.agent_id),
+                &target.source,
+            )
+            .await
+            .context(crate::agent_lifecycle::StartupPhase::Preparation)?;
+        }
         let mut spawned = crate::protocol::acp::spawn::spawn_history_agent_process(
             &target.command,
             &target.agent_id,
             &target.source,
             target.provider.spawn_selection(),
+            target.host_command.as_ref(),
         )
         .context(crate::agent_lifecycle::StartupPhase::Spawn)?;
         let stderr = AgentStderrLog::new(format!("history-{}", target.agent_id));

@@ -459,9 +459,9 @@ impl StartupLease {
         self.state.last_failure = None;
     }
 
-    pub(crate) fn prepared(&mut self, artifact: providers::PreparedArtifact) {
+    pub(crate) fn prepared(&mut self, artifact: &providers::PreparedArtifact) {
         self.dependency_present = artifact.outcome == providers::PreparationOutcome::Ready;
-        self.executable = artifact.executable;
+        self.executable = artifact.executable().map(str::to_string);
     }
 
     pub(crate) fn dependency_present(&self) -> bool {

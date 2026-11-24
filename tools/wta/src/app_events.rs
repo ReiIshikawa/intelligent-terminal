@@ -4321,6 +4321,7 @@ impl App {
                     outcome,
                     crate::agent_check::AgentInstallOutcome::Installed
                         | crate::agent_check::AgentInstallOutcome::AlreadyAvailable
+                        | crate::agent_check::AgentInstallOutcome::AcpPrepared
                 );
                 if installed {
                     if matches!(
@@ -4334,8 +4335,11 @@ impl App {
                         }
                         return;
                     }
-                    let status = crate::agent_check::recheck_agent(&agent_id);
-                    if status.cli_found {
+                    // ACP preparation has already resolved the backend. The
+                    // read-only check looks for the standalone distribution.
+                    if outcome == crate::agent_check::AgentInstallOutcome::AcpPrepared
+                        || crate::agent_check::recheck_agent(&agent_id).cli_found
+                    {
                         if matches!(
                             self.current_agent_source,
                             crate::agent_source::AgentSource::Host
@@ -4393,7 +4397,8 @@ impl App {
                             t!("setup.error.install_detection_timed_out").into_owned(),
                         ),
                         crate::agent_check::AgentInstallOutcome::Installed
-                        | crate::agent_check::AgentInstallOutcome::AlreadyAvailable => (
+                        | crate::agent_check::AgentInstallOutcome::AlreadyAvailable
+                        | crate::agent_check::AgentInstallOutcome::AcpPrepared => (
                             SetupFailureKind::Detection,
                             t!("setup.error.install_detection_timed_out").into_owned(),
                         ),

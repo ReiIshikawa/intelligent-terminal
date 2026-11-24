@@ -28,6 +28,22 @@ pub(crate) enum PreparationOutcome {
 pub(crate) struct PreparedArtifact {
     pub outcome: PreparationOutcome,
     pub executable: Option<String>,
+    pub host_command: Option<PreparedHostCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct PreparedHostCommand {
+    pub program: String,
+    pub args: &'static [&'static str],
+}
+
+impl PreparedArtifact {
+    pub(crate) fn executable(&self) -> Option<&str> {
+        self.host_command
+            .as_ref()
+            .map(|command| command.program.as_str())
+            .or(self.executable.as_deref())
+    }
 }
 
 impl From<PreparationOutcome> for PreparedArtifact {
@@ -35,6 +51,7 @@ impl From<PreparationOutcome> for PreparedArtifact {
         Self {
             outcome,
             executable: None,
+            host_command: None,
         }
     }
 }
